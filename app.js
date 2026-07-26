@@ -1,20 +1,16 @@
 /**
- * 国内城市匹配测试
- * 口令默认：CITYMATCH（可在 ACCESS_CODE 修改）
- * 店铺自动发货时把口令发给买家即可
+ * 国内城市匹配测试（开放直链，无需口令）
  */
 
-const ACCESS_CODE = "CITYMATCH";
-
 const DIMENSIONS = [
-  "pace",      // 生活节奏：慢 → 快
-  "ambition",  // 事业野心：松弛 → 进取
-  "climate",   // 气候偏好：暖湿/宜居 → 耐冷耐燥
-  "social",    // 社交能量：安静 → 热闹
-  "cost",      // 成本敏感：省钱 → 愿为机会买单
-  "nature",    // 自然需求：城市感 → 山水感
-  "culture",   // 文化气质：潮流 → 厚重
-  "spice",     // 刺激度：温和 → 强烈反差
+  "pace",
+  "ambition",
+  "climate",
+  "social",
+  "cost",
+  "nature",
+  "culture",
+  "spice",
 ];
 
 /** @type {Record<string, {name:string, tag:string, quote:string, body:string, scores:Record<string,number>}>} */
@@ -210,16 +206,10 @@ const QUESTIONS = [
   },
 ];
 
-const PASS_KEY = "city_match_unlocked";
-
 const els = {
-  gate: document.getElementById("gate"),
   intro: document.getElementById("intro"),
   quiz: document.getElementById("quiz"),
   result: document.getElementById("result"),
-  passInput: document.getElementById("passInput"),
-  passError: document.getElementById("passError"),
-  unlockBtn: document.getElementById("unlockBtn"),
   startBtn: document.getElementById("startBtn"),
   qIndex: document.getElementById("qIndex"),
   qText: document.getElementById("qText"),
@@ -238,24 +228,9 @@ let userScores = Object.fromEntries(DIMENSIONS.map((d) => [d, 0]));
 let answerCount = Object.fromEntries(DIMENSIONS.map((d) => [d, 0]));
 
 function show(id) {
-  ["gate", "intro", "quiz", "result"].forEach((key) => {
+  ["intro", "quiz", "result"].forEach((key) => {
     els[key].classList.toggle("hidden", key !== id);
   });
-}
-
-function unlock(okPersist = true) {
-  if (okPersist) localStorage.setItem(PASS_KEY, "1");
-  show("intro");
-}
-
-function tryUnlock() {
-  const val = (els.passInput.value || "").trim().toUpperCase();
-  if (val === ACCESS_CODE.toUpperCase()) {
-    els.passError.style.display = "none";
-    unlock(true);
-  } else {
-    els.passError.style.display = "block";
-  }
 }
 
 function startQuiz() {
@@ -270,7 +245,7 @@ function renderQuestion() {
   const q = QUESTIONS[step];
   els.qIndex.textContent = `${step + 1} / ${QUESTIONS.length}`;
   els.qText.textContent = q.text;
-  els.bar.style.width = `${((step) / QUESTIONS.length) * 100}%`;
+  els.bar.style.width = `${(step / QUESTIONS.length) * 100}%`;
   els.options.innerHTML = "";
 
   q.options.forEach((opt) => {
@@ -335,7 +310,8 @@ function renderResult(ranked) {
   els.cityQuote.textContent = `「${city.quote}」`;
 
   const maxDist = ranked[ranked.length - 1].dist || 1;
-  els.alts.innerHTML = ranked.slice(1, 3)
+  els.alts.innerHTML = ranked
+    .slice(1, 3)
     .map((item, idx) => {
       const match = Math.max(55, Math.round((1 - item.dist / maxDist) * 100));
       return `<div class="alt"><span>备选 ${idx + 1} · <strong>${item.city.name}</strong></span><span class="muted">契合 ${match}%</span></div>`;
@@ -343,17 +319,7 @@ function renderResult(ranked) {
     .join("");
 }
 
-els.unlockBtn.addEventListener("click", tryUnlock);
-els.passInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") tryUnlock();
-});
 els.startBtn.addEventListener("click", startQuiz);
-els.retryBtn.addEventListener("click", () => {
-  if (localStorage.getItem(PASS_KEY) === "1") startQuiz();
-  else show("gate");
-});
+els.retryBtn.addEventListener("click", startQuiz);
 
-// 已解锁用户刷新后直接进 intro
-if (localStorage.getItem(PASS_KEY) === "1") {
-  show("intro");
-}
+show("intro");
