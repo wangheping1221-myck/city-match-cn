@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>小红书封面生成器 · 城市匹配</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #1a1f1c; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #ecefe9;
+      color: var(--ink);
+      padding: 24px 16px 60px;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { font-family: "Noto Serif SC", serif; font-size: 22px; margin: 0 0 8px; }
+    .hint { color: #5c675f; margin: 0 0 20px; font-size: 14px; }
+    .controls {
+      display: grid;
+      gap: 12px;
+      background: #fff;
+      border: 1px solid #d7e0d6;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    label { font-size: 13px; color: #5c675f; display: block; margin-bottom: 6px; }
+    textarea, select, input[type="text"] {
+      width: 100%;
+      border: 1px solid #d7e0d6;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 15px;
+      font-family: inherit;
+      background: #fbfcfb;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid #d7e0d6;
+      background: #f7faf7;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: #2f6b4f; background: #dceee3; }
+
+    .stage {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0 24px;
+    }
+
+    /* 小红书常用 3:4 封面 */
+    #cover {
+      width: 360px;
+      height: 480px;
+      border-radius: 0;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 36px;
+    }
+    #coverText {
+      font-family: "Noto Serif SC", serif;
+      font-weight: 700;
+      font-size: 34px;
+      line-height: 1.45;
+      text-align: center;
+      color: var(--ink);
+      margin: 0;
+      white-space: pre-line;
+    }
+    #coverText mark {
+      background: transparent;
+      color: inherit;
+      position: relative;
+      display: inline;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    #coverText mark::after {
+      content: "";
+      position: absolute;
+      left: -2%;
+      right: -2%;
+      bottom: 0.08em;
+      height: 0.32em;
+      background: var(--underline, #f0c94d);
+      z-index: -1;
+      border-radius: 2px;
+      opacity: 0.95;
+    }
+    .quote {
+      position: absolute;
+      top: 28px;
+      left: 28px;
+      font-family: "Noto Serif SC", serif;
+      font-size: 42px;
+      line-height: 1;
+      opacity: 0.18;
+      color: var(--ink);
+    }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button.primary {
+      border: none;
+      background: #1a1f1c;
+      color: #fff;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.ghost {
+      border: 1px solid #d7e0d6;
+      background: #fff;
+      color: #1a1f1c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>小红书封面生成器</h1>
+    <p class="hint">做成 3:4 封面。用手机或电脑截图中间这张图即可发笔记。点金句可一键填入；用 ==词== 给关键词加色块下划线。</p>
+
+    <div class="controls">
+      <div>
+        <label>快捷金句</label>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div>
+        <label>封面文案（可用 ==城市== 这种写法高亮）</label>
+        <textarea id="textInput">你的身体早就替你选好了==城市==</textarea>
+      </div>
+      <div class="row">
+        <div>
+          <label>背景色</label>
+          <select id="bgSelect">
+            <option value="#F7F1E3">米白</option>
+            <option value="#E7F2EA" selected>薄荷绿</option>
+            <option value="#E8F0F7">浅雾蓝</option>
+            <option value="#F6E9EF">浅粉</option>
+            <option value="#F3EFE6">暖沙</option>
+          </select>
+        </div>
+        <div>
+          <label>下划线颜色</label>
+          <select id="lineSelect">
+            <option value="#F0C94D" selected>明黄</option>
+            <option value="#F3A6C2">粉</option>
+            <option value="#8FCB9B">绿</option>
+            <option value="#7EB6D9">蓝</option>
+            <option value="#E8A87C">橘</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="downloadBtn" type="button">下载 PNG（需联网加载库）</button>
+        <button class="ghost" id="renderBtn" type="button">刷新预览</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div id="cover">
+        <div class="quote">“</div>
+        <p id="coverText"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    const HOOKS = [
+      "你的身体早就替你选好了==城市==",
+      "一定要去寻找能==滋养==你的城市",
+      "别再硬扛，去找==养得住你==的城",
+      "有些城市会消耗你，有些会==修复==你",
+      "你不适配的不是生活，是==城市==",
+      "真正适合你的城，==身体==会先松下来",
+      "去能让你==呼吸变深==的地方",
+      "你的倦怠，可能只是==住错了城==",
+      "一定要去最滋养你的城市走一走",
+      "身体比大脑更早知道你该去哪",
+      "有些城让你发光，有些城让你发灰",
+      "你需要的不是更大的城，是更==对==的城",
+      "适合你的城市，会有「==回家==」的感觉",
+      "你不是懒，你只是还没被好好==养活==",
+      "先问身体，再问房价",
+      "迁徙是本能，不是逃避",
+      "别在消耗你的地方，证明自己",
+      "一座对的城，能省下三年内耗",
+      "去被偏爱的城市，而不是被考验",
+      "测一测：哪座城在等你",
+    ];
+
+    const chips = document.getElementById("chips");
+    const textInput = document.getElementById("textInput");
+    const bgSelect = document.getElementById("bgSelect");
+    const lineSelect = document.getElementById("lineSelect");
+    const cover = document.getElementById("cover");
+    const coverText = document.getElementById("coverText");
+
+    HOOKS.forEach((h) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = h.replaceAll("==", "");
+      b.addEventListener("click", () => {
+        textInput.value = h;
+        render();
+      });
+      chips.appendChild(b);
+    });
+
+    function toHtml(raw) {
+      const escaped = raw
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+      return escaped.replace(/==(.+?)==/g, "<mark>$1</mark>");
+    }
+
+    function render() {
+      cover.style.background = bgSelect.value;
+      cover.style.setProperty("--underline", lineSelect.value);
+      coverText.innerHTML = toHtml(textInput.value.trim() || "输入文案");
+      const len = (textInput.value || "").replaceAll("==", "").length;
+      coverText.style.fontSize = len > 22 ? "28px" : len > 16 ? "32px" : "34px";
+    }
+
+    document.getElementById("renderBtn").addEventListener("click", render);
+    textInput.addEventListener("input", render);
+    bgSelect.addEventListener("change", render);
+    lineSelect.addEventListener("change", render);
+
+    document.getElementById("downloadBtn").addEventListener("click", async () => {
+      render();
+      if (!window.html2canvas) {
+        alert("下载库未加载，请直接截图封面区域");
+        return;
+      }
+      const canvas = await html2canvas(cover, {
+        scale: 3,
+        backgroundColor: null,
+        useCORS: true,
+      });
+      const a = document.createElement("a");
+      a.download = "xiaohongshu-cover.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="你的身体早就替你选好了城市 — 1分钟城市匹配测试" />
+  <title>你的身体早就替你选好了城市</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1f1c;
+      --muted: #5c675f;
+      --paper: #f3f6f2;
+      --card: #ffffff;
+      --line: #d7e0d6;
+      --accent: #2f6b4f;
+      --accent-soft: #dceee3;
+      --warm: #e8a87c;
+      --shadow: 0 18px 50px rgba(26, 31, 28, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #e7f2ea 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #f7e9dc 0%, transparent 50%),
+        var(--paper);
+      line-height: 1.55;
+    }
+
+    .shell {
+      width: min(440px, 100%);
+      margin: 0 auto;
+      padding: 28px 18px 48px;
+      min-height: 100vh;
+    }
+
+    .brand {
+      font-family: "Noto Serif SC", serif;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 28px 22px;
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2 {
+      font-family: "Noto Serif SC", serif;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0 0 12px;
+    }
+    h1 { font-size: 28px; }
+    h2 { font-size: 24px; }
+
+    .lead {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--ink);
+      color: #fff;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .gate-input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 14px;
+      font-size: 16px;
+      margin-bottom: 12px;
+      font-family: inherit;
+      background: #fbfcfb;
+    }
+    .gate-input:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .error {
+      color: #b42318;
+      font-size: 13px;
+      margin: -4px 0 12px;
+      display: none;
+    }
+
+    .progress {
+      height: 6px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--accent), #6aa887);
+      transition: width 0.25s ease;
+    }
+    .q-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .options { display: grid; gap: 10px; margin-top: 18px; }
+    .option {
+      text-align: left;
+      background: #f7faf7;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 14px;
+      font-size: 15px;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--ink);
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .option:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .result-hero {
+      text-align: center;
+      padding: 8px 0 6px;
+    }
+    .result-kicker {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .result-city {
+      font-family: "Noto Serif SC", serif;
+      font-size: 40px;
+      margin: 0 0 8px;
+    }
+    .result-tag {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .result-body {
+      background: #f7faf7;
+      border-radius: 16px;
+      padding: 18px 16px;
+      color: var(--ink);
+      font-size: 15px;
+      white-space: pre-line;
+    }
+    .result-quote {
+      font-family: "Noto Serif SC", serif;
+      font-size: 18px;
+      margin: 18px 0 0;
+      padding-top: 16px;
+      border-top: 1px dashed var(--line);
+      color: var(--ink);
+    }
+    .alts {
+      margin-top: 18px;
+      display: grid;
+      gap: 8px;
+    }
+    .alt {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      font-size: 14px;
+    }
+    .alt strong { font-family: "Noto Serif SC", serif; }
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .hidden { display: none !important; }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="brand">CITY MATCH · 城市匹配</div>
+
+    <!-- 支付后口令门（店铺自动发货把口令发给用户） -->
+    <section id="gate" class="card">
+      <div class="pill">付费测试入口</div>
+      <h1>你的身体早就替你选好了城市</h1>
+      <p class="lead">回答 10 道题，用 1 分钟找到最滋养你的那座城。输入购买后收到的口令开始。</p>
+      <input id="passInput" class="gate-input" type="text" placeholder="请输入口令" autocomplete="off" />
+      <div id="passError" class="error">口令不正确，请核对店铺发货信息</div>
+      <button class="btn btn-primary" id="unlockBtn">开始测试</button>
+    </section>
+
+    <section id="intro" class="card hidden">
+      <div class="pill">10 题 · 约 1 分钟</div>
+      <h1>别急着选城市<br />先听听身体怎么说</h1>
+      <p class="lead">没有标准答案。选最贴近此刻的你，系统会匹配一座真正养人的城。</p>
+      <button class="btn btn-primary" id="startBtn">开始匹配</button>
+    </section>
+
+    <section id="quiz" class="card hidden">
+      <div class="progress"><span id="bar"></span></div>
+      <div class="q-meta">
+        <span id="qIndex">1 / 10</span>
+        <span>凭感觉选就好</span>
+      </div>
+      <h2 id="qText"></h2>
+      <div class="options" id="options"></div>
+    </section>
+
+    <section id="result" class="card hidden">
+      <div class="result-hero">
+        <div class="result-kicker">最契合你的城市是</div>
+        <h2 class="result-city" id="cityName"></h2>
+        <div class="result-tag" id="cityTag"></div>
+      </div>
+      <div class="result-body" id="cityBody"></div>
+      <p class="result-quote" id="cityQuote"></p>
+      <div class="alts" id="alts"></div>
+      <button class="btn btn-primary" id="retryBtn" style="margin-top:18px">再测一次</button>
+      <p class="footer-note">结果仅供娱乐与自我探索参考 · 截图分享时记得带话题</p>
+    </section>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
