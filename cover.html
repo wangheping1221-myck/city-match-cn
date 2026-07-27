@@ -349,11 +349,16 @@
     </div>
 
     <div class="live-panel">
-      <h2>静图 → Live 短视频</h2>
+      <h2>静图 → 小红书 LIVE 图</h2>
       <p class="hint" style="margin:0">
-        网页没法直接生成 iPhone「实况图」文件，但可以生成<strong>短视频</strong>（小红书可发）。
-        完整显示不裁切，轻微运镜。生成后点保存，用系统分享存到相册。
+        小红书的 LIVE / 实况图，只能从<strong>手机相册里的实况照片</strong>上传。
+        网页<strong>写不进</strong>苹果相册的实况格式，所以这里只做第 1 步：生成 1.5～2 秒运镜视频。
       </p>
+      <ol class="hint" style="margin:0;padding-left:1.2em;line-height:1.7">
+        <li>这里生成并下载运镜短视频（建议 1.5 或 2 秒）</li>
+        <li>传到 <strong>iPhone</strong>，用 <strong>美图秀秀</strong>（或 intoLive / 醒图）打开该视频 → 导出/保存为<strong>实况照片</strong></li>
+        <li>打开小红书发图文 → 选相册里带 LIVE 的那张 → 发笔记</li>
+      </ol>
       <div>
         <label>上传图片</label>
         <input id="liveFile" type="file" accept="image/*" />
@@ -370,21 +375,21 @@
           </select>
         </div>
         <div>
-          <label>时长</label>
+          <label>时长（转实况用）</label>
           <select id="liveDuration">
-            <option value="1.5">1.5 秒</option>
-            <option value="2" selected>2 秒</option>
+            <option value="1.5" selected>1.5 秒（推荐）</option>
+            <option value="2">2 秒</option>
             <option value="3">3 秒</option>
           </select>
         </div>
       </div>
       <div class="actions">
-        <button class="primary" id="liveMakeBtn" type="button">生成 Live 短视频</button>
-        <button class="ghost" id="liveSaveBtn" type="button" disabled>保存到相册/下载</button>
+        <button class="primary" id="liveMakeBtn" type="button">生成运镜视频</button>
+        <button class="ghost" id="liveSaveBtn" type="button" disabled>下载视频（去转实况）</button>
         <span class="toast" id="liveToast"></span>
       </div>
       <div class="live-preview-wrap" id="livePreviewWrap">
-        <div class="placeholder" id="livePlaceholder">上传图片后点「生成 Live 短视频」</div>
+        <div class="placeholder" id="livePlaceholder">上传图片后点「生成运镜视频」</div>
         <img id="livePreview" alt="预览" style="display:none" />
         <video id="liveVideo" playsinline muted loop controls style="display:none;max-width:100%;max-height:420px;border-radius:8px;"></video>
       </div>
@@ -1154,10 +1159,10 @@
         url: liveVideoUrl,
         blob: liveVideoBlob,
         fileName: isWebm ? "live-cover.webm" : "live-cover.mp4",
-        title: "保存 Live 短视频",
-        hint: "点「系统分享/存相册」；不支持时点下载。发小红书可直接用这个短视频。",
+        title: "下载运镜视频",
+        hint: "先下载/分享到 iPhone → 用美图秀秀打开此视频 → 保存为「实况照片」→ 再发小红书选这张 LIVE 图。",
       });
-      showLiveToast("可分享或下载");
+      showLiveToast("下载后去转实况");
     });
 
     refreshSwatchActive();
