@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>小红书封面生成器 · 城市匹配</title>
+  <title>小红书封面+文案生成器 · 城市匹配</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&display=swap" rel="stylesheet" />
   <style>
-    :root { --ink: #1a1f1c; }
+    :root { --ink: #1a1f1c; --muted: #5c675f; --line: #d7e0d6; --accent: #2f6b4f; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -15,22 +15,48 @@
       color: var(--ink);
       padding: 24px 16px 60px;
     }
-    .wrap { max-width: 920px; margin: 0 auto; }
+    .wrap { max-width: 980px; margin: 0 auto; }
     h1 { font-family: "Noto Serif SC", serif; font-size: 22px; margin: 0 0 8px; }
-    .hint { color: #5c675f; margin: 0 0 20px; font-size: 14px; }
-    .controls {
+    h2 { font-family: "Noto Serif SC", serif; font-size: 18px; margin: 0 0 10px; }
+    .hint { color: var(--muted); margin: 0 0 20px; font-size: 14px; line-height: 1.55; }
+    .controls, .copy-panel, .live-panel {
       display: grid;
       gap: 12px;
       background: #fff;
-      border: 1px solid #d7e0d6;
+      border: 1px solid var(--line);
       border-radius: 16px;
       padding: 16px;
       margin-bottom: 20px;
     }
-    label { font-size: 13px; color: #5c675f; display: block; margin-bottom: 6px; }
-    textarea, select, input[type="text"] {
+    .live-preview-wrap {
+      display: flex;
+      justify-content: center;
+      min-height: 200px;
+      background: #f7faf7;
+      border-radius: 12px;
+      border: 1px dashed var(--line);
+      overflow: hidden;
+      align-items: center;
+    }
+    .live-preview-wrap img {
+      max-width: 100%;
+      max-height: 420px;
+      display: block;
+    }
+    .live-preview-wrap .placeholder {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 24px;
+      text-align: center;
+    }
+    input[type="file"] {
       width: 100%;
-      border: 1px solid #d7e0d6;
+      font-size: 14px;
+    }
+    label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+    textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
       border-radius: 10px;
       padding: 10px 12px;
       font-size: 15px;
@@ -38,30 +64,33 @@
       background: #fbfcfb;
     }
     textarea { min-height: 72px; resize: vertical; }
+    #noteOutput { min-height: 280px; line-height: 1.7; white-space: pre-wrap; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
-      border: 1px solid #d7e0d6;
+      border: 1px solid var(--line);
       background: #f7faf7;
       border-radius: 999px;
       padding: 8px 12px;
       font-size: 13px;
       cursor: pointer;
     }
-    .chip:hover { border-color: #2f6b4f; background: #dceee3; }
+    .chip:hover, .chip.active { border-color: var(--accent); background: #dceee3; }
 
-    .stage {
-      display: flex;
-      justify-content: center;
-      padding: 10px 0 24px;
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
     }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
-    /* 小红书常用 3:4 封面 */
+    .stage { display: flex; justify-content: center; }
+
     #cover {
       width: 360px;
       height: 480px;
-      border-radius: 0;
       position: relative;
       overflow: hidden;
       box-shadow: 0 20px 50px rgba(0,0,0,0.12);
@@ -80,26 +109,50 @@
       margin: 0;
       white-space: pre-line;
     }
-    #coverText mark {
-      background: transparent;
-      color: inherit;
+    #coverText .hl {
       position: relative;
-      display: inline;
-      box-decoration-break: clone;
-      -webkit-box-decoration-break: clone;
+      display: inline-block;
+      padding: 0 0.22em 0.2em;
+      color: inherit;
+      line-height: 1.4;
     }
-    #coverText mark::after {
-      content: "";
+    #coverText .hl-bar {
       position: absolute;
-      left: -2%;
-      right: -2%;
+      left: -0.14em;
+      right: -0.14em;
       bottom: 0.08em;
-      height: 0.32em;
+      height: 0.36em;
       background: var(--underline, #f0c94d);
-      z-index: -1;
-      border-radius: 2px;
-      opacity: 0.95;
+      opacity: 0.7;
+      border-radius: 999px 50% 80% 40%;
+      transform: rotate(-1deg);
+      transform-origin: center;
+      z-index: 0;
+      pointer-events: none;
     }
+    /* 导出时去掉容易导致 html2canvas 失败的效果 */
+    #cover.capturing .hl-bar {
+      transform: none;
+      border-radius: 999px;
+      opacity: 0.75;
+    }
+    #cover.capturing {
+      box-shadow: none;
+    }
+    #coverText .hl-text {
+      position: relative;
+      z-index: 1;
+    }
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .swatch.active { border-color: #1a1f1c; }
     .quote {
       position: absolute;
       top: 28px;
@@ -123,7 +176,7 @@
       cursor: pointer;
     }
     button.ghost {
-      border: 1px solid #d7e0d6;
+      border: 1px solid var(--line);
       background: #fff;
       color: #1a1f1c;
       border-radius: 12px;
@@ -131,12 +184,66 @@
       font-size: 14px;
       cursor: pointer;
     }
+    .toast {
+      display: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .toast.show { display: inline; }
+
+    .save-mask {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.72);
+      padding: 24px 16px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .save-mask.show { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+    .save-card {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      margin: 12px auto 40px;
+      text-align: center;
+    }
+    .save-card h3 {
+      font-family: "Noto Serif SC", serif;
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .save-card p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .save-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      background: #f3f6f2;
+      -webkit-touch-callout: default;
+      user-select: auto;
+    }
+    .save-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 14px;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>小红书封面生成器</h1>
-    <p class="hint">做成 3:4 封面。用手机或电脑截图中间这张图即可发笔记。点金句可一键填入；用 ==词== 给关键词加色块下划线。</p>
+    <h1>小红书封面 + 文案生成器</h1>
+    <p class="hint">上面做文字封面；下面可上传静图，导出轻微运镜动图（GIF），长按保存到相册。</p>
 
     <div class="controls">
       <div>
@@ -144,19 +251,31 @@
         <div class="chips" id="chips"></div>
       </div>
       <div>
-        <label>封面文案（可用 ==城市== 这种写法高亮）</label>
+        <label>封面文案</label>
         <textarea id="textInput">你的身体早就替你选好了==城市==</textarea>
       </div>
       <div class="row">
         <div>
           <label>背景色</label>
           <select id="bgSelect">
-            <option value="#F7F1E3">米白</option>
             <option value="#E7F2EA" selected>薄荷绿</option>
+            <option value="#F7F1E3">米白</option>
             <option value="#E8F0F7">浅雾蓝</option>
             <option value="#F6E9EF">浅粉</option>
             <option value="#F3EFE6">暖沙</option>
+            <option value="#EEF6F2">淡青</option>
+            <option value="#F8F3E8">奶油</option>
+            <option value="#E9F3F7">天空蓝</option>
+            <option value="#F4ECE4">燕麦</option>
+            <option value="#F3F0F7">浅紫灰</option>
+            <option value="#F7EFE8">蜜桃奶</option>
+            <option value="#EAF4EA">浅绿</option>
+            <option value="#F5F1EA">亚麻</option>
+            <option value="#E8EEF5">雾灰蓝</option>
+            <option value="#F9F4EC">象牙</option>
+            <option value="#EEF2E8">豆青</option>
           </select>
+          <div class="swatches" id="bgSwatches"></div>
         </div>
         <div>
           <label>下划线颜色</label>
@@ -166,23 +285,125 @@
             <option value="#8FCB9B">绿</option>
             <option value="#7EB6D9">蓝</option>
             <option value="#E8A87C">橘</option>
+            <option value="#FFD666">金黄</option>
+            <option value="#FF8FAB">玫粉</option>
+            <option value="#6BCB77">草绿</option>
+            <option value="#4D96FF">亮蓝</option>
+            <option value="#FF6B6B">珊瑚红</option>
+            <option value="#C9A227">琥珀</option>
+            <option value="#A0C4FF">雾蓝</option>
+            <option value="#BDB2FF">淡紫</option>
+            <option value="#FDFFB6">嫩黄</option>
+            <option value="#CAFFBF">薄荷绿线</option>
+            <option value="#FFC6FF">浅紫粉</option>
+          </select>
+          <div class="swatches" id="lineSwatches"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>转化引导</label>
+          <select id="ctaSelect">
+            <option value="link" selected>下方链接自取</option>
+            <option value="shop">橱窗链接自取</option>
+            <option value="soft">想测的评论区扣1</option>
+          </select>
+        </div>
+        <div>
+          <label>文案风格</label>
+          <select id="styleSelect">
+            <option value="auto" selected>按金句自动匹配</option>
+            <option value="feel">共鸣故事</option>
+            <option value="contrast">城市对比</option>
+            <option value="result">测完说中</option>
+            <option value="push">行动号召</option>
           </select>
         </div>
       </div>
       <div class="actions">
-        <button class="primary" id="downloadBtn" type="button">下载 PNG（需联网加载库）</button>
-        <button class="ghost" id="renderBtn" type="button">刷新预览</button>
+        <button class="primary" id="downloadBtn" type="button">保存封面到相册</button>
+        <button class="ghost" id="renderBtn" type="button">刷新封面</button>
+        <button class="ghost" id="regenBtn" type="button">换一篇文案</button>
+        <button class="ghost" id="copyBtn" type="button">复制全部文案</button>
+        <span class="toast" id="toast">已复制</span>
       </div>
     </div>
 
-    <div class="stage">
-      <div id="cover">
-        <div class="quote">“</div>
-        <p id="coverText"></p>
+    <div class="layout">
+      <div class="stage">
+        <div id="cover">
+          <div class="quote">“</div>
+          <p id="coverText"></p>
+        </div>
+      </div>
+
+      <div class="copy-panel">
+        <h2>配套笔记文案</h2>
+        <label>可直接粘贴到小红书（标题可单独用第一行）</label>
+        <textarea id="noteOutput" readonly></textarea>
+        <div class="actions">
+          <button class="primary" id="copyBodyBtn" type="button">复制正文（不含标题）</button>
+          <button class="ghost" id="copyTagsBtn" type="button">只复制话题</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="live-panel">
+      <h2>静图 → Live 短视频</h2>
+      <p class="hint" style="margin:0">
+        网页没法直接生成 iPhone「实况图」文件，但可以生成<strong>短视频</strong>（小红书可发）。
+        完整显示不裁切，轻微运镜。生成后点保存，用系统分享存到相册。
+      </p>
+      <div>
+        <label>上传图片</label>
+        <input id="liveFile" type="file" accept="image/*" />
+      </div>
+      <div class="row">
+        <div>
+          <label>动效</label>
+          <select id="liveEffect">
+            <option value="zoomIn" selected>缓慢推近</option>
+            <option value="zoomOut">缓慢拉远</option>
+            <option value="panRight">轻微右移</option>
+            <option value="panLeft">轻微左移</option>
+            <option value="breath">呼吸缩放</option>
+          </select>
+        </div>
+        <div>
+          <label>时长</label>
+          <select id="liveDuration">
+            <option value="1.5">1.5 秒</option>
+            <option value="2" selected>2 秒</option>
+            <option value="3">3 秒</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="liveMakeBtn" type="button">生成 Live 短视频</button>
+        <button class="ghost" id="liveSaveBtn" type="button" disabled>保存到相册/下载</button>
+        <span class="toast" id="liveToast"></span>
+      </div>
+      <div class="live-preview-wrap" id="livePreviewWrap">
+        <div class="placeholder" id="livePlaceholder">上传图片后点「生成 Live 短视频」</div>
+        <img id="livePreview" alt="预览" style="display:none" />
+        <video id="liveVideo" playsinline muted loop controls style="display:none;max-width:100%;max-height:420px;border-radius:8px;"></video>
       </div>
     </div>
   </div>
 
+  <div class="save-mask" id="saveMask">
+    <div class="save-card">
+      <h3 id="saveTitle">长按图片保存到相册</h3>
+      <p id="saveHint">按住下方封面不放 → 选择「存储图像 / 保存图片」</p>
+      <img id="savePreview" alt="封面预览" style="display:none" />
+      <video id="saveVideo" playsinline muted loop controls style="display:none;width:100%;border-radius:8px;background:#000;"></video>
+      <div class="save-actions">
+        <button class="primary" id="saveShareBtn" type="button" style="display:none">系统分享/存相册</button>
+        <button class="ghost" id="saveDownloadBtn" type="button" style="display:none">下载文件</button>
+        <button class="primary" id="closeSaveBtn" type="button">我知道了</button>
+      </div>
+    </div>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
     const HOOKS = [
@@ -194,78 +415,756 @@
       "真正适合你的城，==身体==会先松下来",
       "去能让你==呼吸变深==的地方",
       "你的倦怠，可能只是==住错了城==",
-      "一定要去最滋养你的城市走一走",
-      "身体比大脑更早知道你该去哪",
-      "有些城让你发光，有些城让你发灰",
+      "一定要去最==滋养==你的城市走一走",
+      "==身体==比大脑更早知道你该去哪",
+      "有些城让你==发光==，有些城让你发灰",
       "你需要的不是更大的城，是更==对==的城",
       "适合你的城市，会有「==回家==」的感觉",
       "你不是懒，你只是还没被好好==养活==",
-      "先问身体，再问房价",
-      "迁徙是本能，不是逃避",
-      "别在消耗你的地方，证明自己",
-      "一座对的城，能省下三年内耗",
-      "去被偏爱的城市，而不是被考验",
-      "测一测：哪座城在等你",
+      "先问==身体==，再问房价",
+      "==迁徙==是本能，不是逃避",
+      "别在==消耗==你的地方，证明自己",
+      "一座对的城，能省下三年==内耗==",
+      "去被==偏爱==的城市，而不是被考验",
+      "测一测：哪座城在==等你==",
     ];
+
+    const TAGS_POOL = [
+      "#城市匹配 #选城市 #滋养自己 #测一测 #生活提案",
+      "#选城市 #城市匹配 #适合自己的生活 #测一测 #滋养自己",
+      "#测一测 #城市匹配 #搬家 #选城市 #生活提案",
+      "#滋养自己 #城市治愈 #选城市 #城市匹配 #测一测",
+      "#生活提案 #选城市 #城市匹配 #测一测 #适合自己的生活",
+    ];
+
+    const OPENERS = {
+      feel: [
+        ["你有没有过这种感觉：", "在某座城怎么都使不上劲，", "换个地方却突然活过来了。", "", "其实不是你不够努力，", "是城市和你的身体频率不对。"],
+        ["有时候累，不是因为事太多，", "是这座城一直在悄悄消耗你。", "", "真正适合你的地方，", "会让呼吸先变深一点。"],
+        ["不是每个人都该留在最热闹的城。", "有人适合被推着跑，", "有人适合被好好养活。", "", "先听听身体怎么说。"],
+        ["你不是懒，", "你只是还没被好好养活。", "", "换一座城，", "很多紧绷会自己松掉。"],
+        ["真正适合你的城，", "身体会先松下来。", "", "脑海里可以继续算账，", "但别忽略身体的投票。"],
+        ["去能让你呼吸变深的地方。", "", "不是逃，", "是把生活调回正确的频率。"],
+        ["你的倦怠，", "可能只是住错了城。", "", "环境不对的时候，", "再努力也像逆风骑车。"],
+        ["先问身体，再问房价。", "", "一座养人的城，", "会先给你稳定的日常。"],
+        ["有些不舒服说不清，", "但换座城就明白了。", "", "那不是矫情，", "是适配问题。"],
+        ["你值得被一座城温柔接住。", "", "不是所有繁华，", "都适合你的神经系统。"],
+        ["如果一座城总让你紧绷，", "那就换。", "", "留下来的理由，", "不该只剩下「大家都这样」。"],
+        ["适合你的城市，", "会有「回家」的感觉。", "", "不是地图上的坐标，", "是身体认不认。"],
+      ],
+      contrast: [
+        ["有人在深圳发光，", "有人在成都回血，", "有人在重庆被叫醒。", "", "城市没有好坏，", "只有匹不匹配。"],
+        ["同样拼命，", "为什么有人越住越松，", "有人越住越空？", "", "很多时候不是你不行，", "是这座城不养你。"],
+        ["有些城让你发光，", "有些城让你发灰。", "", "别用别人的城市，", "过自己的人生。"],
+        ["有些城市会消耗你，", "有些会修复你。", "", "分清这两件事，", "比盲目留下更重要。"],
+        ["热闹不一定养人，", "安静也不一定耽误你。", "", "关键看：", "你在哪里更容易成为自己。"],
+        ["一线给机会，", "小城给呼吸。", "", "没有标准答案，", "只有你此刻更缺哪一个。"],
+        ["同一种努力，", "在不同城市会开出不同的花。", "", "别只盯着别人的结果，", "先看土壤对不对。"],
+        ["你不适配的不是生活，", "是城市。", "", "换对地方之后，", "很多内耗会自己消失。"],
+        ["有人需要舞台，", "有人需要回血站。", "", "承认差异，", "才选得准。"],
+        ["别把「坚持」用错地方。", "", "在错的城里硬刚，", "常常只是延长消耗。"],
+      ],
+      result: [
+        ["一直以为自己该去一线硬刚，", "结果测出来完全不是那套答案。", "", "再一看解析，句句说中。", "原来身体比大脑更早知道该去哪。"],
+        ["测完沉默了几秒。", "不是最热闹的那座，", "却是最让人松下来的那座。", "", "有些选择，答案其实早就写在偏好里。"],
+        ["如果你也在纠结下一座城，", "别只看房价和名气。", "", "先看它能不能养住你。"],
+        ["测完才发现，", "我要的不是更快，", "是被好好对待的日常。"],
+        ["结果出来的瞬间，", "忽然懂了这些年的别扭从哪来。", "", "不是你不够好，", "是频率没对上。"],
+        ["本来想验证自己的想法，", "结果被偏好画像打脸了。", "", "但细想一下，", "好像更准。"],
+        ["测一测哪座城在等你。", "", "18题不长，", "但足够把模糊感觉说清楚。"],
+        ["纠结了很久去哪，", "不如先把偏好测明白。", "", "方向对了，", "选择会轻松很多。"],
+        ["看完契合度，", "突然不想再跟风了。", "", "原来最适合你的城，", "不一定是别人嘴里的「应该」。"],
+        ["测完把备选城也看了，", "居然比想象中更懂自己。", "", "有时候工具的价值，", "是帮你说出心里话。"],
+      ],
+      push: [
+        ["别再硬扛了。", "去找养得住你的城。", "", "迁徙是本能，不是逃避。"],
+        ["别在消耗你的地方，", "证明自己。", "", "一座对的城，", "能省下三年内耗。"],
+        ["去被偏爱的城市，", "而不是被考验。", "", "你值得一座愿意善待你的城。"],
+        ["停下自我消耗，", "先给生活换个坐标。", "", "你会发现：", "努力也可以没那么疼。"],
+        ["别把青春全交给不合适的地方。", "", "离开不是认输，", "是重新选择土壤。"],
+        ["如果你已经连续很久提不起劲，", "试试换城，而不只是换工作。", "", "环境对了，", "人会自己活过来。"],
+        ["允许自己想要更舒服的日常。", "", "舒适不是堕落，", "是长期续航。"],
+        ["去寻找能滋养你的城市。", "", "不是口号，", "是一门功课。"],
+        ["与其继续内耗，", "不如给身体一次投票权。", "", "测完再决定，", "也不迟。"],
+        ["别等燃尽了再离开。", "", "早一点选对城，", "后面路会宽很多。"],
+      ],
+    };
+
+    const PRODUCT_VARIANTS = [
+      ["我做了一个城市匹配测试，", "18道题，大约2分钟，", "会告诉你哪座城最滋养你。"],
+      ["做了个城市匹配测试：", "18题，从节奏/气候/社交等维度匹配，", "大约2分钟出结果。"],
+      ["城市匹配测试放这儿了——", "18道情景题，", "测完有契合度、画像和备选城。"],
+      ["想少走弯路的话，", "可以先测一下城市匹配：", "18题，约2分钟。"],
+      ["我把城市匹配做成了趣味测试，", "题量不长，", "但结果会比较戳。"],
+      ["18题城市匹配，", "帮你找更养人的那座城，", "测完直接看契合度。"],
+      ["与其凭感觉纠结，", "不如用18题把偏好测清楚，", "两分钟就够。"],
+      ["城市匹配测试入口在下面，", "打开即测，", "约2分钟出专属结果。"],
+    ];
+
+    const CTA_VARIANTS = {
+      link: [
+        ["想测的，下方链接自取～", "测完回来评论区聊聊，", "看看有没有同城结果～"],
+        ["测试链接放下面了，", "打开就能测，", "欢迎回来对答案～"],
+        ["下方是测试入口，", "大概两分钟，", "测完来报你的城～"],
+        ["链接在下方，自取即测～", "测完评论区集合，", "看有没有同款城市～"],
+      ],
+      shop: [
+        ["想测的，橱窗链接自取～", "测完回来评论区聊聊，", "看看有没有同城结果～"],
+        ["测试在橱窗，", "下单自动发链接，", "测完来报你的城～"],
+        ["橱窗可测，", "打开即测不用口令，", "欢迎回来对答案～"],
+        ["想测点橱窗，", "两分钟出结果，", "评论区等你交卷～"],
+      ],
+      soft: [
+        ["想测的评论区扣 1，", "我发你测试入口～", "测完回来聊聊同城结果"],
+        ["需要链接的扣「测」，", "我私发你～", "测完来对答案"],
+        ["想要测试的扣 1，", "看到就发～", "测完欢迎回来聊"],
+        ["评论区扣「城市」，", "发你测试入口，", "测完报结果呀"],
+      ],
+    };
 
     const chips = document.getElementById("chips");
     const textInput = document.getElementById("textInput");
     const bgSelect = document.getElementById("bgSelect");
     const lineSelect = document.getElementById("lineSelect");
+    const ctaSelect = document.getElementById("ctaSelect");
+    const styleSelect = document.getElementById("styleSelect");
     const cover = document.getElementById("cover");
     const coverText = document.getElementById("coverText");
+    const noteOutput = document.getElementById("noteOutput");
+    const toast = document.getElementById("toast");
+    const bgSwatches = document.getElementById("bgSwatches");
+    const lineSwatches = document.getElementById("lineSwatches");
 
-    HOOKS.forEach((h) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip";
-      b.textContent = h.replaceAll("==", "");
-      b.addEventListener("click", () => {
-        textInput.value = h;
-        render();
-      });
-      chips.appendChild(b);
-    });
+    let activeChip = null;
+    const usedNotes = new Set(JSON.parse(sessionStorage.getItem("citymatch_used_notes") || "[]"));
+
+    function cleanTitle(raw) {
+      return (raw || "").replaceAll("==", "").replace(/\s+/g, " ").trim();
+    }
+
+    function detectStyle(title) {
+      if (/消耗|修复|发光|发灰|深圳|成都|重庆|对比|同样|不适配/.test(title)) return "contrast";
+      if (/测|结果|说中|沉默|纠结去哪|哪座城在等你/.test(title)) return "result";
+      if (/硬扛|迁徙|证明|省下|偏爱|别再|去找|别在/.test(title)) return "push";
+      return "feel";
+    }
+
+    function saveUsed() {
+      const arr = [...usedNotes];
+      // 防止无限增长：最多记 300 条
+      sessionStorage.setItem("citymatch_used_notes", JSON.stringify(arr.slice(-300)));
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pickUniqueCombo(styleKey, ctaMode) {
+      const openers = OPENERS[styleKey] || OPENERS.feel;
+      const products = PRODUCT_VARIANTS;
+      const ctas = CTA_VARIANTS[ctaMode] || CTA_VARIANTS.link;
+      const tags = TAGS_POOL;
+
+      const candidates = [];
+      for (let oi = 0; oi < openers.length; oi++) {
+        for (let pi = 0; pi < products.length; pi++) {
+          for (let ci = 0; ci < ctas.length; ci++) {
+            for (let ti = 0; ti < tags.length; ti++) {
+              candidates.push(`${styleKey}|${ctaMode}|${oi}|${pi}|${ci}|${ti}`);
+            }
+          }
+        }
+      }
+
+      const fresh = shuffle(candidates.filter((k) => !usedNotes.has(k)));
+      if (fresh.length === 0) {
+        // 该风格组合用尽，清空后再抽
+        candidates.forEach((k) => usedNotes.delete(k));
+        return pickUniqueCombo(styleKey, ctaMode);
+      }
+      const key = fresh[0];
+      usedNotes.add(key);
+      saveUsed();
+      const [, , oi, pi, ci, ti] = key.split("|").map((x, idx) => (idx < 2 ? x : Number(x)));
+      return {
+        opener: openers[oi],
+        product: products[pi],
+        cta: ctas[ci],
+        tags: tags[ti],
+      };
+    }
+
+    function buildNote() {
+      const title = cleanTitle(textInput.value) || "你的身体早就替你选好了城市";
+      const styleKey = styleSelect.value === "auto" ? detectStyle(title) : styleSelect.value;
+      const picked = pickUniqueCombo(styleKey, ctaSelect.value);
+      const body = [
+        title,
+        "",
+        ...picked.opener,
+        "",
+        ...picked.product,
+        "",
+        ...picked.cta,
+        "",
+        "",
+        picked.tags,
+      ].join("\n");
+      noteOutput.value = body;
+    }
+
+    function ensureHighlight(raw) {
+      const text = (raw || "").trim();
+      if (!text) return "你的身体早就替你选好了==城市==";
+      if (text.includes("==")) return text;
+      // 手改文案没标高亮时，自动挑关键词，保证每条都有柔和下划线
+      const keywords = ["滋养", "城市", "身体", "呼吸", "倦怠", "养活", "回家", "迁徙", "消耗", "内耗", "偏爱", "修复", "发光", "养得住你", "住错了城", "等你"];
+      for (const k of keywords) {
+        if (text.includes(k)) return text.replace(k, `==${k}==`);
+      }
+      // 高亮最后 2-4 个字，避免整句无下划线
+      const chars = [...text.replace(/[，。！？、：；“”‘’「」]/g, "")];
+      if (chars.length <= 2) return `==${text}==`;
+      const n = Math.min(4, Math.max(2, Math.ceil(chars.length * 0.28)));
+      const tail = text.slice(-n);
+      return `${text.slice(0, -n)}==${tail}==`;
+    }
 
     function toHtml(raw) {
-      const escaped = raw
+      const color = lineSelect.value || "#F0C94D";
+      const withHl = ensureHighlight(raw);
+      const escaped = withHl
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
-      return escaped.replace(/==(.+?)==/g, "<mark>$1</mark>");
+      return escaped.replace(/==(.+?)==/g, (_, word) => {
+        return `<span class="hl"><span class="hl-bar" style="background:${color}"></span><span class="hl-text">${word}</span></span>`;
+      });
     }
 
-    function render() {
+    function renderCover() {
+      const color = lineSelect.value || "#F0C94D";
+      const raw = ensureHighlight(textInput.value.trim() || "输入文案");
       cover.style.background = bgSelect.value;
-      cover.style.setProperty("--underline", lineSelect.value);
-      coverText.innerHTML = toHtml(textInput.value.trim() || "输入文案");
-      const len = (textInput.value || "").replaceAll("==", "").length;
+      cover.style.setProperty("--underline", color);
+      coverText.innerHTML = toHtml(raw);
+      coverText.querySelectorAll(".hl-bar").forEach((bar) => {
+        bar.style.background = color;
+      });
+      const len = raw.replaceAll("==", "").length;
       coverText.style.fontSize = len > 22 ? "28px" : len > 16 ? "32px" : "34px";
     }
 
-    document.getElementById("renderBtn").addEventListener("click", render);
-    textInput.addEventListener("input", render);
-    bgSelect.addEventListener("change", render);
-    lineSelect.addEventListener("change", render);
+    function renderAll() {
+      renderCover();
+      buildNote();
+    }
 
-    document.getElementById("downloadBtn").addEventListener("click", async () => {
-      render();
-      if (!window.html2canvas) {
-        alert("下载库未加载，请直接截图封面区域");
-        return;
+    function showToast(msg) {
+      toast.textContent = msg || "已复制";
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1400);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("已复制");
+      } catch (e) {
+        noteOutput.focus();
+        noteOutput.select();
+        document.execCommand("copy");
+        showToast("已复制");
       }
-      const canvas = await html2canvas(cover, {
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true,
+    }
+
+    function syncSwatches(selectEl, wrapEl) {
+      wrapEl.innerHTML = "";
+      [...selectEl.options].forEach((opt) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "swatch" + (opt.selected ? " active" : "");
+        b.title = opt.textContent;
+        b.style.background = opt.value;
+        b.addEventListener("click", () => {
+          selectEl.value = opt.value;
+          [...wrapEl.children].forEach((c) => c.classList.remove("active"));
+          b.classList.add("active");
+          if (selectEl === bgSelect) renderCover();
+          else renderCover();
+        });
+        wrapEl.appendChild(b);
       });
-      const a = document.createElement("a");
-      a.download = "xiaohongshu-cover.png";
-      a.href = canvas.toDataURL("image/png");
-      a.click();
+    }
+
+    function refreshSwatchActive() {
+      syncSwatches(bgSelect, bgSwatches);
+      syncSwatches(lineSelect, lineSwatches);
+    }
+
+    HOOKS.forEach((h, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (idx === 0 ? " active" : "");
+      b.textContent = h.replaceAll("==", "");
+      b.addEventListener("click", () => {
+        if (activeChip) activeChip.classList.remove("active");
+        b.classList.add("active");
+        activeChip = b;
+        textInput.value = h;
+        const bgs = [...bgSelect.options].map((o) => o.value);
+        bgSelect.value = bgs[idx % bgs.length];
+        const lines = [...lineSelect.options].map((o) => o.value);
+        lineSelect.value = lines[idx % lines.length];
+        refreshSwatchActive();
+        renderAll();
+      });
+      chips.appendChild(b);
+      if (idx === 0) activeChip = b;
     });
 
-    render();
+    document.getElementById("renderBtn").addEventListener("click", () => {
+      renderCover();
+      showToast("封面已刷新");
+    });
+    document.getElementById("regenBtn").addEventListener("click", () => {
+      buildNote();
+      showToast("已生成新文案");
+    });
+    textInput.addEventListener("input", () => {
+      renderCover();
+      buildNote();
+    });
+    bgSelect.addEventListener("change", () => {
+      refreshSwatchActive();
+      renderCover();
+    });
+    lineSelect.addEventListener("change", () => {
+      refreshSwatchActive();
+      renderCover();
+    });
+    ctaSelect.addEventListener("change", buildNote);
+    styleSelect.addEventListener("change", buildNote);
+
+    document.getElementById("copyBtn").addEventListener("click", () => copyText(noteOutput.value));
+    document.getElementById("copyBodyBtn").addEventListener("click", () => {
+      const lines = noteOutput.value.split("\n");
+      copyText(lines.slice(2).join("\n").trim());
+    });
+    document.getElementById("copyTagsBtn").addEventListener("click", () => {
+      const lines = noteOutput.value.trim().split("\n");
+      copyText(lines[lines.length - 1] || TAGS_POOL[0]);
+    });
+
+    async function captureCoverCanvas() {
+      if (!window.html2canvas) throw new Error("html2canvas missing");
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (e) {}
+      }
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const bg = bgSelect.value || "#E7F2EA";
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const scales = isMobile ? [2, 1.5, 1] : [2.5, 2, 1.5];
+      let lastErr = null;
+
+      cover.classList.add("capturing");
+      try {
+        for (const scale of scales) {
+          try {
+            const canvas = await html2canvas(cover, {
+              scale,
+              backgroundColor: bg,
+              useCORS: true,
+              allowTaint: true,
+              logging: false,
+              foreignObjectRendering: false,
+              imageTimeout: 0,
+              removeContainer: true,
+            });
+            // 有的机型会“成功”但画布是空的
+            const ctx = canvas.getContext("2d");
+            const sample = ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+            const hasPixels = sample[3] > 0 || sample[0] + sample[1] + sample[2] > 0;
+            if (canvas.width > 10 && canvas.height > 10 && hasPixels) return canvas;
+            lastErr = new Error("empty canvas");
+          } catch (e) {
+            lastErr = e;
+          }
+        }
+        throw lastErr || new Error("capture failed");
+      } finally {
+        cover.classList.remove("capturing");
+      }
+    }
+
+    document.getElementById("downloadBtn").addEventListener("click", async () => {
+      renderCover();
+      const btn = document.getElementById("downloadBtn");
+      const oldText = btn.textContent;
+      btn.textContent = "生成中…";
+      btn.disabled = true;
+
+      try {
+        const canvas = await captureCoverCanvas();
+        const dataUrl = canvas.toDataURL("image/png");
+        openSaveModal({
+          kind: "image",
+          url: dataUrl,
+          title: "长按图片保存到相册",
+          hint: "按住下方封面不放 → 选择「存储图像 / 保存图片」",
+        });
+        showToast("请长按图片保存");
+      } catch (e) {
+        console.error(e);
+        alert("生成失败了，直接截图左侧封面也行；或换个浏览器再试一次");
+      } finally {
+        btn.textContent = oldText;
+        btn.disabled = false;
+      }
+    });
+
+    const savePreview = document.getElementById("savePreview");
+    const saveVideo = document.getElementById("saveVideo");
+    const saveShareBtn = document.getElementById("saveShareBtn");
+    const saveDownloadBtn = document.getElementById("saveDownloadBtn");
+    let saveBlob = null;
+    let saveFileName = "cover.png";
+
+    function closeSaveModal() {
+      document.getElementById("saveMask").classList.remove("show");
+      document.body.style.overflow = "";
+      saveVideo.pause();
+      saveVideo.removeAttribute("src");
+      saveVideo.load();
+      saveBlob = null;
+    }
+
+    function openSaveModal({ kind, url, title, hint, blob, fileName }) {
+      document.getElementById("saveTitle").textContent = title;
+      document.getElementById("saveHint").textContent = hint;
+      saveBlob = blob || null;
+      saveFileName = fileName || (kind === "video" ? "live-cover.mp4" : "cover.png");
+
+      if (kind === "video") {
+        savePreview.style.display = "none";
+        savePreview.removeAttribute("src");
+        saveVideo.style.display = "block";
+        saveVideo.src = url;
+        saveVideo.play().catch(() => {});
+        saveShareBtn.style.display = "inline-flex";
+        saveDownloadBtn.style.display = "inline-flex";
+      } else {
+        saveVideo.style.display = "none";
+        saveVideo.pause();
+        saveVideo.removeAttribute("src");
+        savePreview.style.display = "block";
+        savePreview.src = url;
+        saveShareBtn.style.display = "none";
+        saveDownloadBtn.style.display = "none";
+      }
+
+      document.getElementById("saveMask").classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+
+    document.getElementById("closeSaveBtn").addEventListener("click", closeSaveModal);
+    document.getElementById("saveMask").addEventListener("click", (e) => {
+      if (e.target.id === "saveMask") closeSaveModal();
+    });
+
+    saveDownloadBtn.addEventListener("click", () => {
+      if (!saveBlob) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(saveBlob);
+      a.download = saveFileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
+
+    saveShareBtn.addEventListener("click", async () => {
+      if (!saveBlob) return;
+      const file = new File([saveBlob], saveFileName, { type: saveBlob.type || "video/mp4" });
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "Live 短视频" });
+          return;
+        }
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+      saveDownloadBtn.click();
+      alert("当前浏览器不支持直接存相册，已改为下载文件。可用系统相册/文件 App 导入。");
+    });
+
+    // ---------- 静图 → Live 短视频 ----------
+    const liveFile = document.getElementById("liveFile");
+    const liveEffect = document.getElementById("liveEffect");
+    const liveDuration = document.getElementById("liveDuration");
+    const liveMakeBtn = document.getElementById("liveMakeBtn");
+    const liveSaveBtn = document.getElementById("liveSaveBtn");
+    const livePreview = document.getElementById("livePreview");
+    const liveVideo = document.getElementById("liveVideo");
+    const livePlaceholder = document.getElementById("livePlaceholder");
+    const liveToast = document.getElementById("liveToast");
+    let liveVideoUrl = "";
+    let liveVideoBlob = null;
+    let liveSourceImg = null;
+
+    function showLiveToast(msg) {
+      liveToast.textContent = msg;
+      liveToast.classList.add("show");
+      setTimeout(() => liveToast.classList.remove("show"), 1600);
+    }
+
+    function pickMimeType() {
+      const types = [
+        "video/mp4;codecs=avc1.42E01E",
+        "video/mp4",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ];
+      if (!window.MediaRecorder) return "";
+      for (const t of types) {
+        if (MediaRecorder.isTypeSupported(t)) return t;
+      }
+      return "";
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    function drawLiveFrame(ctx, img, w, h, scale, offsetX, offsetY) {
+      ctx.save();
+      ctx.fillStyle = "#f3f6f2";
+      ctx.fillRect(0, 0, w, h);
+      ctx.filter = "blur(18px)";
+      const bgScale = 1.35;
+      const ir = img.width / img.height;
+      const tr = w / h;
+      let bgw, bgh;
+      if (ir > tr) {
+        bgh = h * bgScale;
+        bgw = bgh * ir;
+      } else {
+        bgw = w * bgScale;
+        bgh = bgw / ir;
+      }
+      ctx.drawImage(img, (w - bgw) / 2, (h - bgh) / 2, bgw, bgh);
+      ctx.filter = "none";
+      ctx.restore();
+
+      let bw, bh;
+      if (ir > tr) {
+        bw = w * scale;
+        bh = bw / ir;
+      } else {
+        bh = h * scale;
+        bw = bh * ir;
+      }
+      const x = (w - bw) / 2 + offsetX * w;
+      const y = (h - bh) / 2 + offsetY * h;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, x, y, bw, bh);
+    }
+
+    function pickLiveSize(img) {
+      const maxSide = 1080;
+      const ir = img.width / Math.max(img.height, 1);
+      let w, h;
+      if (ir >= 1) {
+        w = maxSide;
+        h = Math.round(maxSide / ir);
+      } else {
+        h = maxSide;
+        w = Math.round(maxSide * ir);
+      }
+      w = w - (w % 2);
+      h = h - (h % 2);
+      return { w: Math.max(320, w), h: Math.max(320, h) };
+    }
+
+    function motionAt(effect, t) {
+      let scale = 1;
+      let ox = 0;
+      let oy = 0;
+      if (effect === "zoomIn") scale = 0.92 + t * 0.08;
+      else if (effect === "zoomOut") scale = 1.0 - t * 0.08;
+      else if (effect === "panRight") {
+        scale = 0.94;
+        ox = -0.02 + t * 0.04;
+      } else if (effect === "panLeft") {
+        scale = 0.94;
+        ox = 0.02 - t * 0.04;
+      } else if (effect === "breath") {
+        scale = 0.94 + Math.sin(t * Math.PI) * 0.06;
+      }
+      return { scale, ox, oy };
+    }
+
+    function recordLiveVideo(img, effect, durationSec) {
+      return new Promise((resolve, reject) => {
+        const mimeType = pickMimeType();
+        if (!mimeType) {
+          reject(new Error("MediaRecorder unsupported"));
+          return;
+        }
+
+        const { w, h } = pickLiveSize(img);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        const fps = 30;
+        const stream = canvas.captureStream(fps);
+        const chunks = [];
+        let recorder;
+        try {
+          recorder = new MediaRecorder(stream, {
+            mimeType,
+            videoBitsPerSecond: 6000000,
+          });
+        } catch (e) {
+          reject(e);
+          return;
+        }
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+        recorder.onerror = () => reject(new Error("record error"));
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: mimeType.split(";")[0] });
+          resolve({ blob, w, h, mimeType: blob.type });
+        };
+
+        recorder.start(100);
+        const start = performance.now();
+        const totalMs = durationSec * 1000;
+
+        function tick(now) {
+          const elapsed = now - start;
+          const t = Math.min(1, elapsed / totalMs);
+          const m = motionAt(effect, t);
+          drawLiveFrame(ctx, img, w, h, m.scale, m.ox, m.oy);
+          if (t < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            setTimeout(() => {
+              try { recorder.stop(); } catch (err) { reject(err); }
+              stream.getTracks().forEach((tr) => tr.stop());
+            }, 80);
+          }
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+
+    function clearLiveVideo() {
+      if (liveVideoUrl) URL.revokeObjectURL(liveVideoUrl);
+      liveVideoUrl = "";
+      liveVideoBlob = null;
+      liveVideo.pause();
+      liveVideo.removeAttribute("src");
+      liveVideo.style.display = "none";
+    }
+
+    liveFile.addEventListener("change", async () => {
+      const file = liveFile.files && liveFile.files[0];
+      if (!file) return;
+      try {
+        liveSourceImg = await loadImageFromFile(file);
+        const { w, h } = pickLiveSize(liveSourceImg);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        drawLiveFrame(c.getContext("2d"), liveSourceImg, w, h, 1, 0, 0);
+        clearLiveVideo();
+        livePlaceholder.style.display = "none";
+        livePreview.style.display = "block";
+        livePreview.src = c.toDataURL("image/png");
+        liveSaveBtn.disabled = true;
+        showLiveToast("图片已加载（完整显示）");
+      } catch (e) {
+        alert("图片读取失败，请换一张再试");
+      }
+    });
+
+    liveMakeBtn.addEventListener("click", async () => {
+      if (!liveSourceImg) {
+        alert("请先上传一张图片");
+        return;
+      }
+      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+        alert("当前浏览器不支持导出视频，请用 Safari / Chrome 最新版再试");
+        return;
+      }
+
+      const old = liveMakeBtn.textContent;
+      liveMakeBtn.textContent = "生成中…";
+      liveMakeBtn.disabled = true;
+      liveSaveBtn.disabled = true;
+
+      try {
+        const duration = Number(liveDuration.value) || 2;
+        const effect = liveEffect.value;
+        const result = await recordLiveVideo(liveSourceImg, effect, duration);
+        clearLiveVideo();
+        liveVideoBlob = result.blob;
+        liveVideoUrl = URL.createObjectURL(result.blob);
+        livePreview.style.display = "none";
+        livePlaceholder.style.display = "none";
+        liveVideo.style.display = "block";
+        liveVideo.src = liveVideoUrl;
+        liveVideo.play().catch(() => {});
+        liveSaveBtn.disabled = false;
+        const ext = (result.mimeType || "").includes("webm") ? "WebM" : "MP4";
+        showLiveToast("短视频已生成（" + ext + "）");
+      } catch (e) {
+        console.error(e);
+        alert("短视频生成失败。请用手机 Safari / 电脑 Chrome 再试，或换一张图。");
+      } finally {
+        liveMakeBtn.textContent = old;
+        liveMakeBtn.disabled = false;
+      }
+    });
+
+    liveSaveBtn.addEventListener("click", () => {
+      if (!liveVideoBlob || !liveVideoUrl) {
+        alert("请先生成短视频");
+        return;
+      }
+      const isWebm = (liveVideoBlob.type || "").includes("webm");
+      openSaveModal({
+        kind: "video",
+        url: liveVideoUrl,
+        blob: liveVideoBlob,
+        fileName: isWebm ? "live-cover.webm" : "live-cover.mp4",
+        title: "保存 Live 短视频",
+        hint: "点「系统分享/存相册」；不支持时点下载。发小红书可直接用这个短视频。",
+      });
+      showLiveToast("可分享或下载");
+    });
+
+    refreshSwatchActive();
+    renderAll();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => renderCover());
+    }
   </script>
 </body>
 </html>

@@ -161,11 +161,43 @@
       cursor: pointer;
       font-family: inherit;
       color: var(--ink);
-      transition: border-color 0.15s ease, background 0.15s ease;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      -webkit-tap-highlight-color: transparent;
+      transition: none;
     }
-    .option:hover {
+    .option:hover,
+    .option:focus,
+    .option:focus-visible {
+      outline: none;
+      background: #f7faf7;
+      border-color: var(--line);
+    }
+    .option .opt-key {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      background: #fff;
+      margin-top: 1px;
+    }
+    .option .opt-text { flex: 1; line-height: 1.45; }
+    .option.is-chosen {
       border-color: var(--accent);
       background: var(--accent-soft);
+    }
+    .option.is-chosen .opt-key {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #fff;
     }
 
     .result-hero {
@@ -233,6 +265,70 @@
       font-size: 12px;
       margin-top: 18px;
     }
+
+    .match-score {
+      font-family: "Noto Serif SC", serif;
+      font-size: 15px;
+      color: var(--accent);
+      margin: 0 0 14px;
+      font-weight: 700;
+    }
+
+    .profile {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--line);
+    }
+    .profile h3 {
+      font-family: "Noto Serif SC", serif;
+      font-size: 15px;
+      margin: 0 0 12px;
+    }
+    .dim {
+      display: grid;
+      grid-template-columns: 64px 1fr 40px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .dim-bar {
+      height: 8px;
+      background: var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .dim-bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--accent), #6aa887);
+      border-radius: 999px;
+      transition: width 0.45s ease;
+    }
+    .why {
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+    }
+    .why-item {
+      background: #f7faf7;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    #analyzing {
+      text-align: center;
+      padding: 36px 12px;
+    }
+    #analyzing .dots {
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -240,20 +336,25 @@
     <div class="brand">CITY MATCH · 城市匹配</div>
 
     <section id="intro" class="card">
-      <div class="pill">免费直测 · 10 题 · 约 1 分钟</div>
+      <div class="pill">18 题 · 约 2 分钟 · 21 城匹配</div>
       <h1>你的身体早就替你选好了城市</h1>
-      <p class="lead">没有标准答案。选最贴近此刻的你，1 分钟匹配一座真正养人的城。</p>
+      <p class="lead">没有标准答案。选最贴近此刻的你，系统会从节奏、气候、社交、事业等维度匹配最滋养你的城。</p>
       <button class="btn btn-primary" id="startBtn">开始匹配</button>
     </section>
 
     <section id="quiz" class="card hidden">
       <div class="progress"><span id="bar"></span></div>
       <div class="q-meta">
-        <span id="qIndex">1 / 10</span>
+        <span id="qIndex">1 / 18</span>
         <span>凭感觉选就好</span>
       </div>
       <h2 id="qText"></h2>
       <div class="options" id="options"></div>
+    </section>
+
+    <section id="analyzing" class="card hidden">
+      <h2>正在匹配你的城市…</h2>
+      <p class="dots" id="analyzeText">读取生活节奏偏好</p>
     </section>
 
     <section id="result" class="card hidden">
@@ -261,12 +362,18 @@
         <div class="result-kicker">最契合你的城市是</div>
         <h2 class="result-city" id="cityName"></h2>
         <div class="result-tag" id="cityTag"></div>
+        <p class="match-score" id="matchScore"></p>
       </div>
       <div class="result-body" id="cityBody"></div>
       <p class="result-quote" id="cityQuote"></p>
+      <div class="why" id="why"></div>
+      <div class="profile">
+        <h3>你的城市偏好画像</h3>
+        <div id="profile"></div>
+      </div>
       <div class="alts" id="alts"></div>
       <button class="btn btn-primary" id="retryBtn" style="margin-top:18px">再测一次</button>
-      <p class="footer-note">结果仅供娱乐与自我探索参考 · 截图分享时记得带话题</p>
+      <p class="footer-note">结果仅供娱乐与自我探索参考，不构成任何决策建议</p>
     </section>
   </div>
 
