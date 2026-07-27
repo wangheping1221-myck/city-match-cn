@@ -920,6 +920,7 @@
     let liveVideoUrl = "";
     let liveVideoBlob = null;
     let liveSourceImg = null;
+    let liveSolidBg = "#f3f6f2";
 
     function showLiveToast(msg) {
       liveToast.textContent = msg;
@@ -952,36 +953,45 @@
       });
     }
 
-    function drawLiveFrame(ctx, img, w, h, scale, offsetX, offsetY) {
-      ctx.save();
-      ctx.fillStyle = "#f3f6f2";
-      ctx.fillRect(0, 0, w, h);
-      ctx.filter = "blur(18px)";
-      const bgScale = 1.35;
-      const ir = img.width / img.height;
-      const tr = w / h;
-      let bgw, bgh;
-      if (ir > tr) {
-        bgh = h * bgScale;
-        bgw = bgh * ir;
-      } else {
-        bgw = w * bgScale;
-        bgh = bgw / ir;
+    function sampleSolidBg(img) {
+      // 取四角平均色当纯色底，绝不使用模糊原图垫底
+      try {
+        const c = document.createElement("canvas");
+        c.width = 8;
+        c.height = 8;
+        const x = c.getContext("2d");
+        x.drawImage(img, 0, 0, 8, 8);
+        const pts = [[1, 1], [6, 1], [1, 6], [6, 6]];
+        let r = 0, g = 0, b = 0;
+        for (const [px, py] of pts) {
+          const d = x.getImageData(px, py, 1, 1).data;
+          r += d[0]; g += d[1]; b += d[2];
+        }
+        r = Math.round(r / 4);
+        g = Math.round(g / 4);
+        b = Math.round(b / 4);
+        return `rgb(${r},${g},${b})`;
+      } catch (e) {
+        return "#f3f6f2";
       }
-      ctx.drawImage(img, (w - bgw) / 2, (h - bgh) / 2, bgw, bgh);
-      ctx.filter = "none";
-      ctx.restore();
+    }
 
+    function drawLiveFrame(ctx, img, w, h, scale, offsetX, offsetY, solidBg) {
+      // 画布与原图同比例；运镜 scale>=1 铺满；万一有缝用纯色底，不用模糊图
+      const ir = img.width / img.height;
+      const s = Math.max(1.02, scale);
       let bw, bh;
-      if (ir > tr) {
-        bw = w * scale;
-        bh = bw / ir;
-      } else {
-        bh = h * scale;
+      if (ir >= w / h) {
+        bh = h * s;
         bw = bh * ir;
+      } else {
+        bw = w * s;
+        bh = bw / ir;
       }
       const x = (w - bw) / 2 + offsetX * w;
       const y = (h - bh) / 2 + offsetY * h;
+      ctx.fillStyle = solidBg || "#f3f6f2";
+      ctx.fillRect(0, 0, w, h);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, x, y, bw, bh);
@@ -1004,19 +1014,20 @@
     }
 
     function motionAt(effect, t) {
-      let scale = 1;
+      // 全部放大铺满，四周不会露出原图边缘图案
+      let scale = 1.02;
       let ox = 0;
       let oy = 0;
-      if (effect === "zoomIn") scale = 0.92 + t * 0.08;
-      else if (effect === "zoomOut") scale = 1.0 - t * 0.08;
+      if (effect === "zoomIn") scale = 1.02 + t * 0.08;
+      else if (effect === "zoomOut") scale = 1.1 - t * 0.08;
       else if (effect === "panRight") {
-        scale = 0.94;
+        scale = 1.08;
         ox = -0.02 + t * 0.04;
       } else if (effect === "panLeft") {
-        scale = 0.94;
+        scale = 1.08;
         ox = 0.02 - t * 0.04;
       } else if (effect === "breath") {
-        scale = 0.94 + Math.sin(t * Math.PI) * 0.06;
+        scale = 1.02 + Math.sin(t * Math.PI) * 0.06;
       }
       return { scale, ox, oy };
     }
@@ -1030,6 +1041,7 @@
         }
 
         const { w, h } = pickLiveSize(img);
+        const solidBg = sampleSolidBg(img);
         const canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
@@ -1065,7 +1077,7 @@
           const elapsed = now - start;
           const t = Math.min(1, elapsed / totalMs);
           const m = motionAt(effect, t);
-          drawLiveFrame(ctx, img, w, h, m.scale, m.ox, m.oy);
+          drawLiveFrame(ctx, img, w, h, m.scale, m.ox, m.oy, solidBg);
           if (t < 1) {
             requestAnimationFrame(tick);
           } else {
@@ -1093,11 +1105,12 @@
       if (!file) return;
       try {
         liveSourceImg = await loadImageFromFile(file);
+        liveSolidBg = sampleSolidBg(liveSourceImg);
         const { w, h } = pickLiveSize(liveSourceImg);
         const c = document.createElement("canvas");
         c.width = w;
         c.height = h;
-        drawLiveFrame(c.getContext("2d"), liveSourceImg, w, h, 1, 0, 0);
+        drawLiveFrame(c.getContext("2d"), liveSourceImg, w, h, 1.02, 0, 0, liveSolidBg);
         clearLiveVideo();
         livePlaceholder.style.display = "none";
         livePreview.style.display = "block";
