@@ -391,7 +391,7 @@
       <div class="live-preview-wrap" id="livePreviewWrap">
         <div class="placeholder" id="livePlaceholder">上传图片后点「生成运镜视频」</div>
         <img id="livePreview" alt="预览" style="display:none" />
-        <video id="liveVideo" playsinline muted loop controls style="display:none;max-width:100%;max-height:420px;border-radius:8px;"></video>
+        <video id="liveVideo" playsinline muted controls preload="auto" style="display:none;max-width:100%;max-height:420px;border-radius:8px;background:#eef2ee;"></video>
       </div>
     </div>
   </div>
@@ -401,7 +401,7 @@
       <h3 id="saveTitle">长按图片保存到相册</h3>
       <p id="saveHint">按住下方封面不放 → 选择「存储图像 / 保存图片」</p>
       <img id="savePreview" alt="封面预览" style="display:none" />
-      <video id="saveVideo" playsinline muted loop controls style="display:none;width:100%;border-radius:8px;background:#000;"></video>
+      <video id="saveVideo" playsinline muted controls preload="auto" style="display:none;width:100%;border-radius:8px;background:#eef2ee;"></video>
       <div class="save-actions">
         <button class="primary" id="saveShareBtn" type="button" style="display:none">系统分享/存相册</button>
         <button class="ghost" id="saveDownloadBtn" type="button" style="display:none">下载文件</button>
@@ -850,7 +850,7 @@
       saveBlob = null;
     }
 
-    function openSaveModal({ kind, url, title, hint, blob, fileName }) {
+    function openSaveModal({ kind, url, title, hint, blob, fileName, posterUrl, solidBg }) {
       document.getElementById("saveTitle").textContent = title;
       document.getElementById("saveHint").textContent = hint;
       saveBlob = blob || null;
@@ -860,14 +860,14 @@
         savePreview.style.display = "none";
         savePreview.removeAttribute("src");
         saveVideo.style.display = "block";
-        saveVideo.src = url;
-        saveVideo.play().catch(() => {});
+        bindVideoNoFlash(saveVideo, url, posterUrl || "", solidBg || "#eef2ee");
         saveShareBtn.style.display = "inline-flex";
         saveDownloadBtn.style.display = "inline-flex";
       } else {
         saveVideo.style.display = "none";
         saveVideo.pause();
         saveVideo.removeAttribute("src");
+        saveVideo.removeAttribute("poster");
         savePreview.style.display = "block";
         savePreview.src = url;
         saveShareBtn.style.display = "none";
@@ -919,6 +919,7 @@
     const liveToast = document.getElementById("liveToast");
     let liveVideoUrl = "";
     let liveVideoBlob = null;
+    let livePosterUrl = "";
     let liveSourceImg = null;
     let liveSolidBg = "#f3f6f2";
 
@@ -1014,7 +1015,7 @@
     }
 
     function motionAt(effect, t) {
-      // u: 0→1→0，首尾画面一致，循环播放不闪
+      // u: 0→1→0，首尾画面一致
       const u = Math.sin(Math.min(1, Math.max(0, t)) * Math.PI);
       let scale = 1.02;
       let ox = 0;
@@ -1033,82 +1034,130 @@
       return { scale, ox, oy };
     }
 
-    function recordLiveVideo(img, effect, durationSec) {
-      return new Promise((resolve, reject) => {
-        const mimeType = pickMimeType();
-        if (!mimeType) {
-          reject(new Error("MediaRecorder unsupported"));
-          return;
-        }
+    function waitMs(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
 
-        const { w, h } = pickLiveSize(img);
-        const solidBg = sampleSolidBg(img);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d", { alpha: false });
-        const fps = 30;
-        const stream = canvas.captureStream(fps);
-        const chunks = [];
-        let recorder;
-        try {
-          recorder = new MediaRecorder(stream, {
-            mimeType,
-            videoBitsPerSecond: 6000000,
-          });
-        } catch (e) {
-          reject(e);
-          return;
-        }
+    async function recordLiveVideo(img, effect, durationSec) {
+      const mimeType = pickMimeType();
+      if (!mimeType) throw new Error("MediaRecorder unsupported");
 
-        recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) chunks.push(e.data);
-        };
+      const { w, h } = pickLiveSize(img);
+      const solidBg = sampleSolidBg(img);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+      // 手机上 24fps + 手动推帧更稳，减少开头黑帧闪烁
+      const fps = 24;
+      const frameMs = 1000 / fps;
+      const motionFrames = Math.max(20, Math.round(durationSec * fps));
+      const holdFrames = Math.max(8, Math.round(fps * 0.4)); // 首尾各静止约 0.4 秒
+
+      // captureStream(0) + requestFrame：每画一帧再推一帧，避免空帧
+      let stream;
+      let track = null;
+      try {
+        stream = canvas.captureStream(0);
+        track = stream.getVideoTracks()[0];
+      } catch (e) {
+        stream = canvas.captureStream(fps);
+        track = stream.getVideoTracks()[0];
+      }
+
+      const chunks = [];
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 5_000_000,
+        });
+      } catch (e) {
+        recorder = new MediaRecorder(stream);
+      }
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      const stopped = new Promise((resolve, reject) => {
         recorder.onerror = () => reject(new Error("record error"));
         recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: mimeType.split(";")[0] });
-          resolve({ blob, w, h, mimeType: blob.type });
+          const blob = new Blob(chunks, { type: (recorder.mimeType || mimeType).split(";")[0] });
+          resolve(blob);
         };
-
-        // 先画好首帧，再开录，避免开头黑闪
-        const m0 = motionAt(effect, 0);
-        drawLiveFrame(ctx, img, w, h, m0.scale, m0.ox, m0.oy, solidBg);
-
-        recorder.start(100);
-        const totalMs = durationSec * 1000;
-        let start = 0;
-
-        function tick(now) {
-          if (!start) start = now;
-          const elapsed = now - start;
-          const t = Math.min(1, elapsed / totalMs);
-          const m = motionAt(effect, t);
-          drawLiveFrame(ctx, img, w, h, m.scale, m.ox, m.oy, solidBg);
-          if (t < 1) {
-            requestAnimationFrame(tick);
-          } else {
-            // 再画一帧首帧姿态并稍等，保证结尾=开头
-            const mend = motionAt(effect, 0);
-            drawLiveFrame(ctx, img, w, h, mend.scale, mend.ox, mend.oy, solidBg);
-            setTimeout(() => {
-              try { recorder.stop(); } catch (err) { reject(err); }
-              stream.getTracks().forEach((tr) => tr.stop());
-            }, 120);
-          }
-        }
-
-        // 等编码器吃到首帧后再开始计时运镜
-        setTimeout(() => requestAnimationFrame(tick), 150);
       });
+
+      function paint(t) {
+        const m = motionAt(effect, t);
+        drawLiveFrame(ctx, img, w, h, m.scale, m.ox, m.oy, solidBg);
+        if (track && typeof track.requestFrame === "function") {
+          try { track.requestFrame(); } catch (e) {}
+        }
+      }
+
+      // 首帧海报（给 video.poster，避免加载时闪黑）
+      paint(0);
+      const posterUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+      recorder.start(200);
+      await waitMs(250);
+      paint(0);
+      if (track && typeof track.requestFrame === "function") {
+        try { track.requestFrame(); } catch (e) {}
+      }
+      await waitMs(frameMs);
+
+      // 开头多停：盖住部分机型的前置黑帧
+      for (let i = 0; i < holdFrames; i++) {
+        paint(0);
+        await waitMs(frameMs);
+      }
+      // 运镜（来回，首尾一致）
+      for (let i = 0; i <= motionFrames; i++) {
+        paint(i / motionFrames);
+        await waitMs(frameMs);
+      }
+      // 结尾再停在首帧姿态
+      for (let i = 0; i < holdFrames; i++) {
+        paint(0);
+        await waitMs(frameMs);
+      }
+
+      await waitMs(180);
+      try { recorder.stop(); } catch (e) {}
+      stream.getTracks().forEach((tr) => tr.stop());
+      const blob = await stopped;
+      return { blob, w, h, mimeType: blob.type, posterUrl, solidBg };
     }
 
     function clearLiveVideo() {
       if (liveVideoUrl) URL.revokeObjectURL(liveVideoUrl);
       liveVideoUrl = "";
       liveVideoBlob = null;
+      livePosterUrl = "";
       liveVideo.pause();
       liveVideo.removeAttribute("src");
+      liveVideo.removeAttribute("poster");
       liveVideo.style.display = "none";
+    }
+
+    function bindVideoNoFlash(videoEl, url, posterUrl, solidBg) {
+      videoEl.style.background = solidBg || "#eef2ee";
+      videoEl.loop = false;
+      if (posterUrl) videoEl.poster = posterUrl;
+      videoEl.src = url;
+      videoEl.onended = () => {
+        // 停在最后一帧/回到开头用海报，避免循环跳闪
+        try { videoEl.pause(); videoEl.currentTime = 0; } catch (e) {}
+      };
+      const kick = () => {
+        try {
+          if (videoEl.currentTime < 0.05) videoEl.currentTime = 0.05;
+        } catch (e) {}
+        videoEl.play().catch(() => {});
+      };
+      videoEl.onloadeddata = kick;
     }
 
     liveFile.addEventListener("change", async () => {
@@ -1155,11 +1204,12 @@
         clearLiveVideo();
         liveVideoBlob = result.blob;
         liveVideoUrl = URL.createObjectURL(result.blob);
+        livePosterUrl = result.posterUrl || "";
+        liveSolidBg = result.solidBg || liveSolidBg;
         livePreview.style.display = "none";
         livePlaceholder.style.display = "none";
         liveVideo.style.display = "block";
-        liveVideo.src = liveVideoUrl;
-        liveVideo.play().catch(() => {});
+        bindVideoNoFlash(liveVideo, liveVideoUrl, livePosterUrl, liveSolidBg);
         liveSaveBtn.disabled = false;
         const ext = (result.mimeType || "").includes("webm") ? "WebM" : "MP4";
         showLiveToast("短视频已生成（" + ext + "）");
@@ -1185,6 +1235,8 @@
         fileName: isWebm ? "live-cover.webm" : "live-cover.mp4",
         title: "下载运镜视频",
         hint: "先下载/分享到 iPhone → 用美图秀秀打开此视频 → 保存为「实况照片」→ 再发小红书选这张 LIVE 图。",
+        posterUrl: livePosterUrl,
+        solidBg: liveSolidBg,
       });
       showLiveToast("下载后去转实况");
     });
