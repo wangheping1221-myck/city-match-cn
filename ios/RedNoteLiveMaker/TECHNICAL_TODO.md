@@ -1,10 +1,10 @@
 # Technical TODO
 
-## Must complete before TestFlight
+## Must validate before TestFlight
 
 ### 1. MotionVideoRenderer
 
-Implement `renderMotionVideo(...)` with:
+`renderMotionVideo(...)` now has an initial AVAssetWriter implementation. Validate it on device with:
 
 - `AVAssetWriter` output type `.mov`.
 - H.264 video codec.
@@ -27,7 +27,7 @@ Acceptance:
 
 ### 2. LivePhotoMetadataWriter
 
-Implement `writeVideoContentIdentifier(...)` with:
+`writeVideoContentIdentifier(...)` now has an initial AVAssetReader/Writer implementation. Validate that it writes:
 
 - Top-level QuickTime metadata:
   - `com.apple.quicktime.content.identifier`
